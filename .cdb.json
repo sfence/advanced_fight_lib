@@ -1,0 +1,10 @@
+{
+  "type": "mod",
+  "name": "advanced_fight_lib",
+  "title": "Advanced Fight Library",
+  "short_description": "Library for implementing advanced combat systems with hitbox-based damage and body part health tracking",
+  "long_description": "Provides a comprehensive library for implementing advanced combat systems in Luanti. Integrates hitbox detection with attribute effects, supports both players and entities (including mobs), and provides sophisticated damage calculation, armor handling, body part health tracking, and effect management. Includes point hit system, shield mechanics, and storage system for persistent combat data. See README.md in repository for more informations.",
+  "license": "MIT",
+  "media_license": "CC-BY-4.0",
+  "tags": ["library"]
+}
