@@ -253,7 +253,7 @@ advanced_fight_lib.create_effects_group_from_values(player, "head_injury", {
 
 ### Hit Handling
 
-#### `advanced_fight_lib.object_on_hit(self, obj, storage, hit_data)`
+#### `advanced_fight_lib.parts.on_hit(self, obj, storage, hit_data)`
 
 Handle a hit to an object, updating body part health.
 
@@ -270,7 +270,7 @@ Handle a hit to an object, updating body part health.
 
 ---
 
-#### `advanced_fight_lib.object_on_update(self, obj, storage, hit_data)`
+#### `advanced_fight_lib.parts.on_update(self, obj, storage, hit_data)`
 
 Apply effects after a hit.
 

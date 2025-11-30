@@ -7,8 +7,8 @@ local have_3d_armor = core.get_modpath("3d_armor") ~= nil
 
 function a_player.on_hit(self, player, hit_data)
 	local storage = advanced_fight_lib.get_object_storage(player)
-	advanced_fight_lib.object_on_hit(self, player, storage, hit_data)
-	advanced_fight_lib.object_on_update(self, player, storage, hit_data)
+	advanced_fight_lib.parts.on_hit(self, player, storage, hit_data)
+	advanced_fight_lib.parts.on_update(self, player, storage, hit_data)
 	advanced_fight_lib.set_object_storage(player, storage)
 end
 
@@ -18,6 +18,16 @@ function a_player.on_respawn(player)
 	advanced_fight_lib.object_on_respawn(player, storage)
 	print("After respawn storage: "..dump(storage))
 	advanced_fight_lib.set_object_storage(player, storage)
+end
+
+function a_player.on_join(player)
+	local storage = advanced_fight_lib.get_object_storage(player)
+	print("Loading player "..player:get_player_name()..' storage: '..dump(storage))
+	advanced_fight_lib.object_on_load(player, storage)
+	advanced_fight_lib.set_object_storage(player, storage)
+	if attributes_effects.objects_list[player:get_guid()] then
+		attributes_effects.objects_list[player:get_guid()].verbose = true
+	end
 end
 
 function a_player.on_heal(player, heal_amount, heal_data)
