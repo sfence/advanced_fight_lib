@@ -28,30 +28,6 @@ https://opensource.org/licenses/MIT
 
 # Licenses of media
 
-## Attribution 4.0 International (CC BY 4.0)
+## Attribution-ShareAlike 4.0 International (CC BY-SA 4.0)
 
-This work is licensed under the Creative Commons Attribution 4.0 International License. To view a copy of this license, visit http://creativecommons.org/licenses/by/4.0/ or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
-
-## Attribution-ShareAlike 3.0 Unported (CC BY-SA 3.0)
-
-This work is licensed under the Creative Commons  Attribution-ShareAlike 3.0 Unported License. To view a copy of this license, visit http://creativecommons.org/licenses/by-sa/3.0/ or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
-
-## CC0 1.0 Universal (CC0 1.0)
-
-This work is licensed under the Creative Commons  CC0 1.0 Universal License. To view a copy of this license, visit https://creativecommons.org/publicdomain/zero/1.0/ or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.
-
-## WTFPL
-
-DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE 
-                    Version 2, December 2004 
-
- Copyright (C) 2004 Sam Hocevar <sam@hocevar.net> 
-
- Everyone is permitted to copy and distribute verbatim or modified 
- copies of this license document, and changing it is allowed as long 
- as the name is changed. 
-
-DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE 
-   TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION 
-
-  0. You just DO WHAT THE FUCK YOU WANT TO.
+This work is licensed under the Creative Commons Attribution-ShareAlike 4.0 International License. To view a copy of this license, visit http://creativecommons.org/licenses/by-sa/4.0/ or send a letter to Creative Commons, PO Box 1866, Mountain View, CA 94042, USA.

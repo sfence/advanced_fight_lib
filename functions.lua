@@ -135,6 +135,8 @@ function advanced_fight_lib.object_on_heal(obj, storage, heal_amount, heal_data)
 			part.health = math.min(
 					part.health + heal_amount * heal_multiplier,
 					part.max_health)
+			print("Healed part "..key.." by "..(heal_amount * heal_multiplier)..
+					", new health: "..part.health.."/"..part.max_health)
 		end
 		if part.effects then
 			for effect_key, effect in pairs(part.effects) do

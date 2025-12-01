@@ -10,6 +10,7 @@ function a_player.on_hit(self, player, hit_data)
 	advanced_fight_lib.parts.on_hit(self, player, storage, hit_data)
 	advanced_fight_lib.parts.on_update(self, player, storage, hit_data)
 	advanced_fight_lib.set_object_storage(player, storage)
+	attributes_effects.request_object_on_step_update(player:get_guid())
 end
 
 function a_player.on_respawn(player)
