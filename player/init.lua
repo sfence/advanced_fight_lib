@@ -1,5 +1,4 @@
 
-
 local dir_path = core.get_modpath(core.get_current_modname()).."/player"
 
 advanced_fight_lib.player = {}

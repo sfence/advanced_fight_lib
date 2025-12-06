@@ -40,7 +40,7 @@ function advanced_fight_lib.create_effects_group_from_values(obj, label, values)
 	return attributes_effects.add_effects_group_to_object(obj:get_guid(), label, {
 		values = values,
 		cb_update = function(self, obj, dtime, add_value)
-			local verbose = attributes_effects.objects_list[obj:get_guid()].verbose
+			local verbose = attributes_effects.get_object_verbose(obj:get_guid())
 			local storage = advanced_fight_lib.get_object_storage(obj)
 			local is_zero = true
 			for name, data in pairs(self.values) do
@@ -159,9 +159,14 @@ function advanced_fight_lib.create_point_hit_effect(data)
 				"[advanced_fight] advanced_fight_lib.create_point_hit_effect: no points defined")
 		return nil
 	end
-	if not effect.points_size then
+	if not effect.points_radius then
 		core.log("error",
-				"[advanced_fight] advanced_fight_lib.create_point_hit_effect: no points_size defined")
+				"[advanced_fight] advanced_fight_lib.create_point_hit_effect: no points_radius defined")
+		return nil
+	end
+	if not effect.points_area then
+		core.log("error",
+				"[advanced_fight] advanced_fight_lib.create_point_hit_effect: no points_area defined")
 		return nil
 	end
 	if not effect.points_axis then
@@ -177,6 +182,9 @@ function advanced_fight_lib.create_point_hit_effect(data)
 	end
 
 	effect.cb_add_effect = function(self, obj, hit_data)
+		if not hit_data.details.allow_point_hit then
+			return
+		end
 		--print("hit_data.details: "..dump(hit_data.details))
 		local global_axis_valid = true
 		local per_point_axis_check = true
@@ -199,12 +207,12 @@ function advanced_fight_lib.create_point_hit_effect(data)
 					local axis = string.sub(point_axis, 1, 1)
 					point[axis] = hit_rel[axis]
 					local dist = vector.distance(hit_rel, point)
-					local point_size = self.points_size
-					if type(self.points_size)=="table" then
-						point_size = self.points_size[point_index]
+					local point_radius = self.points_radius
+					if type(self.points_radius)=="table" then
+						point_radius = self.points_radius[point_index]
 					end
-					print("dist: "..dist.." point_size: "..point_size)
-					if dist < point_size then
+					print("dist: "..dist.." point_radius: "..point_radius)
+					if dist < point_radius then
 						local damage_key = self.part_damage_key
 						print("Damage key: "..damage_key)
 						local storage = advanced_fight_lib.get_object_storage(obj)
@@ -219,8 +227,20 @@ function advanced_fight_lib.create_point_hit_effect(data)
 						if type(self.points_max_health)=="table" then
 							max_health = self.points_max_health[point_index]
 						end
-						part[damage_key][point_index] = (part[damage_key][point_index] or 0) + hit_data.damage/max_health
-						print("Hit point: "..point_index.." damage: "..dump(part[damage_key]))
+						local point_damage = hit_data.damage
+						if hit_data.hit_area then
+							local point_area = self.points_area
+							if type(self.points_area)=="table" then
+								point_area = self.points_area[point_index]
+							end
+							local hit_area = hit_data.hit_area
+							print("hit point_area: "..point_area.." hit_area: "..hit_area)
+							if hit_area > point_area then
+								point_damage = point_damage * (point_area / hit_area)
+							end
+						end
+						part[damage_key][point_index] = (part[damage_key][point_index] or 0) + point_damage/max_health
+						print("Hit point: "..point_index.." from received damage "..hit_data.damage..", apply damage: "..point_damage..", result damage: "..dump(part[damage_key]))
 						local create_effects_group = true
 						if self.effects_group_label then
 							if attributes_effects.get_effects_group_id(obj:get_guid(), self.effects_group_label) then
@@ -255,7 +275,7 @@ advanced_fight_lib.point_hit_effect_view_range_calculate_damage = function(self,
 	local storage = advanced_fight_lib.get_object_storage(obj)
 	local part = storage._parts_health[self.name]
 	local damage_key = self.part_damage_key
-	print(("part: %s damage_key: %s"):format(dump(part), dump(damage_key)))
+	--print(("part: %s damage_key: %s"):format(dump(part), dump(damage_key)))
 	local min_damage = math.min(unpack(part[damage_key] or {0}))
 	return min_damage
 end
@@ -323,30 +343,45 @@ function advanced_fight_lib.calculate_damage(obj, puncher, tflp, tool_caps, dir)
 		obj_rot = obj:get_rotation()
 	end
 
-	local hit_from_pos = vector.zero()
+	local hit_from_relpos = vector.zero()
 	local hit_from_dir = dir
 	local puncher_rot
 	if puncher then
 		if puncher:is_player() then
 			hit_from_dir = puncher:get_look_dir()
-			puncher_rot = vector.new(0, hit_from_dir.y, 0)
+			puncher_rot = vector.new(0, puncher:get_look_horizontal(), 0)
 			local eye_height = puncher:get_properties().eye_height
-			hit_from_pos = vector.new(0, eye_height, 0)
+			hit_from_relpos = vector.new(0, eye_height, 0)
 		else
 			puncher_rot = puncher:get_rotation()
 			local ent = puncher:get_luaentity()
 			if ent then
 				if ent.cb_calculate_attack_dir then
 					hit_from_dir = ent:cb_calculate_attack_dir(obj)
-				elseif ent.attack_offsets and obj:is_player() then
-					local punch_offset = ent.attack_offsets.punch_offset or vector.zero()
-					local target_offset = ent.attack_offsets.target_offset or vector.zero()
+				elseif ent._attack_data and obj:is_player() then
+					local punch_offset = ent._attack_data.punch_offset or vector.zero()
+					local target_offset = ent._attack_data.target_offset or vector.zero()
 					punch_offset = vector.rotate(punch_offset, puncher_rot)
 					target_offset = vector.rotate(target_offset, obj_rot)
-					hit_from_pos = punch_offset
+					hit_from_relpos = punch_offset
 					hit_from_dir = vector.normalize(vector.subtract(
 							vector.add(obj:get_pos(), target_offset),
 							vector.add(puncher:get_pos(), punch_offset)))
+				end
+				if ent._attack_data  then
+					local attack_data = ent._attack_data
+					local horizontal_inaccuracy = attack_data.horizontal_inaccuracy or attack_data.inaccuracy or 0.0
+					local vertical_inaccuracy = attack_data.vertical_inaccuracy or attack_data.inaccuracy or 0.0
+					if horizontal_inaccuracy > 0.0 or vertical_inaccuracy > 0.0 then
+						local h_angle = (math.random() - 0.5) * horizontal_inaccuracy
+						local v_angle = (math.random() - 0.5) * vertical_inaccuracy
+						h_angle = math.rad(h_angle)
+						v_angle = math.rad(v_angle)
+						hit_from_dir = vector.rotate(hit_from_dir,
+								vector.new(0, h_angle, 0))
+						hit_from_dir = vector.rotate(hit_from_dir,
+								vector.new(v_angle, 0, 0))
+					end
 				end
 			end
 		end
@@ -357,11 +392,11 @@ function advanced_fight_lib.calculate_damage(obj, puncher, tflp, tool_caps, dir)
 
 		target = obj,
 		hitgroup_name = hitgroup_name,
-		hitbox_pos = vector.subtract(obj:get_pos(), ref_pos),
+		hitbox_relpos = vector.subtract(obj:get_pos(), ref_pos),
 		hitbox_rot = obj_rot,
 
 		attacker = puncher,
-		hit_from_pos = hit_from_pos,
+		hit_from_relpos = hit_from_relpos,
 		hit_from_dir = hit_from_dir,
 
 		dir = dir,
@@ -375,22 +410,33 @@ function advanced_fight_lib.calculate_damage(obj, puncher, tflp, tool_caps, dir)
 	if puncher:is_player() then
 		def = puncher:get_wielded_item():get_definition()
 		hit_data.range = def.range or 4.0
+		--print("Using player wielded item \""..def.name.."\" definition for damage calculation with attack data "..dump(def._attack_data))
 	else
-		local def = puncher:get_luaentity()
+		def = puncher:get_luaentity()
 	end
 
 	if def then
 		if def.cb_set_hit_attributes then
 			def:cb_set_hit_attributes(hit_data)
 		else
-			hit_data.range = def._hit_range or 4.0
-			if def._hit_box then
-				hit_data.mode = "box"
-				hit_data.box = def._hit_box
-				hit_data.box_rot = puncher_rot
-			elseif def._hit_sphere_radius then
-				hit_data.mode = "sphere"
-				hit_data.sphere_radius = def._hit_sphere_radius
+			local attack_data = def._attack_data
+			if attack_data then
+				hit_data.range = attack_data.hit_range or 4.0
+
+				if attack_data.hit_box then
+					hit_data.mode = "box"
+					hit_data.box = attack_data.hit_box
+					hit_data.box_rot = puncher_rot
+				elseif attack_data.hit_sphere_radius then
+					hit_data.mode = "sphere"
+					hit_data.sphere_radius = attack_data.hit_sphere_radius
+				end
+			else
+				hit_data.range = 4.0
+
+				if puncher:is_player() then
+					advanced_fight_lib.player.set_default_hit_attributes(hit_data)
+				end
 			end
 		end
 	else
@@ -400,6 +446,8 @@ function advanced_fight_lib.calculate_damage(obj, puncher, tflp, tool_caps, dir)
 	end
 
 	--print("[advanced_fight] advanced_fight_lib.calculate_damage hit_data: "..dump(hit_data))
+
+	--print(dump(hit_data))
 
 	local hits = hitboxes_lib.detect_hits(hit_data)
 	if hits==nil then
@@ -440,10 +488,11 @@ function advanced_fight_lib.calculate_damage(obj, puncher, tflp, tool_caps, dir)
 		return 0
 	end
 
+	hit.allow_point_hit = true
+
 	hit_data.details = hit
 
 	print("Hit detected for "..obj:get_guid().." to part "..hit_data.details.name.." from axis "..hit_data.details.hit_axis.." at rel pos "..core.pos_to_string(hit_data.details.hit_relative))
-
 	--print(dump(hit_data))
 
 	if hitbox_data.cb_calculate_damage then
@@ -465,6 +514,10 @@ function advanced_fight_lib.calculate_damage(obj, puncher, tflp, tool_caps, dir)
 		end
 		hit_data.damage = advanced_fight_lib.random_round(damage * damage_multiplier)
 	end
+
+	core.log("action",
+			("[advanced_fight] Hit detected for %s to part %s from axis %s at rel pos %s, damage: %d")
+				:format(obj:get_guid(), hit_data.details.name, hit_data.details.hit_axis, core.pos_to_string(hit_data.details.hit_relative), hit_data.damage))
 
 	return hit_data
 end
@@ -512,4 +565,16 @@ function advanced_fight_lib.calculate_get_miss_chance(self, hit_data)
 		print("angle: "..angle.." miss chance: "..result_miss_chance)
 	end
 	return result_miss_chance
+end
+
+function advanced_fight_lib.convert_relative_hit_to_grid_value(hit_x, hit_y, table_def)
+	local col = math.floor(hit_x * (table_def.width - 1) + 0.5) + 1
+	local row = math.floor(hit_y * (table_def.height - 1) + 0.5) + 1
+
+	if col < 1 then col = 1 end
+	if col > table_def.width then col = table_def.width end
+	if row < 1 then row = 1 end
+	if row > table_def.height then row = table_def.height end
+
+	return table_def.data[row][col]
 end

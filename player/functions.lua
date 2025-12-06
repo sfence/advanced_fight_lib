@@ -117,6 +117,7 @@ function a_player.get_armor(self, hit_data)
 		print("No armor_element defined for hitbox "..hit_data.details.name)
 		return def_groups
 	end
+	local hit_table = self.armor_hit_table or hit_element
 	-- hit_element: "head", "torso", "legs", "feet" apod.
 	local name, armor_inv = armor:get_valid_player(player, "[apply_hit_armor]")
 	if not name then
@@ -173,6 +174,7 @@ function a_player.get_armor(self, hit_data)
 					end
 					print("Shield used for hit_data with index: "..stack_index)
 					hit_data.details.shield_index = stack_index
+					hit_data.details.shield_name  = stack:get_name()
 				end
 				break
 			end
@@ -187,18 +189,71 @@ function a_player.get_armor(self, hit_data)
 			if stack:get_count() == 1 then
 				local def = stack:get_definition()
 				if def.groups["armor_"..hit_element] then
-					if def.full_armor_groups then
-						for group, level in pairs(def.full_armor_groups) do
-							if levels[group] then
-								levels[group] = levels[group] + level
+					local apply_armor = true
+					print("Checking armor piece "..stack:get_name().." for hitbox "..hit_data.details.name)
+					print(dump(def.axis_hit_tables))
+					if def.axis_hit_tables and def.axis_hit_tables[hit_table] ~= nil then
+						local hit_axis = hit_data.details.hit_axis
+						local axis_hit_table = def.axis_hit_tables[hit_table][hit_axis]
+						if axis_hit_table ~= nil then
+							local rel_x, rel_y
+							if hit_axis == "x+" or hit_axis == "x-" then
+								rel_y = 1 - hit_data.details.hit_relative.y
+								rel_x = hit_data.details.hit_relative.z
+							elseif hit_axis == "y+" or hit_axis == "y-" then
+								rel_y = hit_data.details.hit_relative.z
+								rel_x = hit_data.details.hit_relative.x
+							else
+								rel_x = hit_data.details.hit_relative.x
+								rel_y = 1 - hit_data.details.hit_relative.y
+								rel_y = 1 - hit_data.details.hit_relative.y
+							end
+							local hit_space = advanced_fight_lib.convert_relative_hit_to_grid_value(rel_x, rel_y, axis_hit_table)
+							print("Hit space for axis "..hit_axis.." is "..tostring(hit_space).." for pos ("..
+								tostring(rel_x)..","..tostring(rel_y)..")")
+							if hit_space > 0 then
+								if hit_data.mode == "box" then
+									local box_x = hit_data.box.x_max - hit_data.box.x_min
+									local box_y = hit_data.box.y_max - hit_data.box.y_min
+									if box_x < hit_space and box_y < hit_space then
+										apply_armor = false -- plný průchod
+									elseif box_x > hit_space and box_y > hit_space then
+										apply_armor = true -- žádný průchod
+									else
+										-- hraniční stav: jedna souřadnice uvnitř, druhá venku
+										local angle = math.random() * 2 * math.pi
+										local eff_x = box_x * math.cos(angle) - box_y * math.sin(angle)
+										local eff_y = box_x * math.sin(angle) + box_y * math.cos(angle)
+										local eff_dist = math.max(math.abs(eff_x), math.abs(eff_y))
+
+										if eff_dist < hit_space then
+											apply_armor = false
+										end
+									end
+								elseif hit_data.mode == "sphere" then
+									if hit_data.sphere_radius >= hit_space then
+										apply_armor = false
+									end
+								end
 							end
 						end
-					else
-						local level = def.groups["armor_"..hit_element]
-						levels["fleshy"] = levels["fleshy"] + level
 					end
-					print("Armor used for hit_data with index: "..stack_index)
-					hit_data.details.armor_index = stack_index
+					if apply_armor then
+						if def.full_armor_groups then
+							for group, level in pairs(def.full_armor_groups) do
+								if levels[group] then
+									levels[group] = levels[group] + level
+								end
+							end
+						else
+							local level = def.groups["armor_"..hit_element]
+							levels["fleshy"] = levels["fleshy"] + level
+						end
+						print("Armor used for hit_data with index: "..stack_index)
+						hit_data.details.armor_index = stack_index
+						hit_data.details.armor_name  = stack:get_name()
+						hit_data.details.allow_point_hit = false
+					end
 					break
 				end
 			end
@@ -331,6 +386,14 @@ if have_3d_armor then
 		-- overwrite inv
 		return name, create_armor_punch_inv(name, inv)
 	end
+end
+
+function a_player.set_default_hit_attributes(hit_data)
+	hit_data.mode = "box"
+	hit_data.box = hitboxes_lib.collisionbox_to_box(
+			{-0.11, -0.11, -0.11, 0.11, 0.11, 0.11})
+	hit_data.box_rot = vector.new(0, hit_data.puncher:get_look_horizontal(), 0)
+	hit_data.hit_area = 0.22*0.22
 end
 
 players_effects.register_on_respawn_callback(a_player.on_respawn)
